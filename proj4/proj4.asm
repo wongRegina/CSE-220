@@ -54,9 +54,7 @@ div $v0, $t0
 mfhi $v0
 jr $ra
 
-compare_to: # msgID, frag_off, src Addr
-# la $a0, packet1
-# la $a1, packet2
+compare_to: 
 	lw $t0, ($a0)
 	lw $t1, ($a1)
 	# MSG ID
@@ -261,9 +259,79 @@ move $v0, $s7
 jr $ra
 
 clear_queue:
+li $v0, -1
+blez $a1, clearQueueDone
+li $v0, 0
+sh $0, ($a0)
+sh $a1, 2($a0)
+loopForClearQueue:
+	beqz $a1, clearQueueDone
+	addi $a0, $a0, 4
+	sw $0, ($a0)	
+	addi $a1, $a1, -1
+	j loopForClearQueue
+clearQueueDone:
 jr $ra
 
-enqueue:
+enqueue: # Must call  compare_to($t0, $t1, $t2, $t3)
+	lh $t4, ($a0) # Size
+	lh $t5, 2($a0) # MAX_SIZE
+	move $t5, $v0
+	beq $t4, $t5, enqueueDone
+	#Memory on the stack
+		addi $sp, $sp, -12
+		sw $s0, ($sp)
+		sw $s1, 4($sp)
+		sw $s1, 8($sp)
+	# Put things into the saved registers
+		move $s0, $a0 # Queue
+		move $s1, $a1 # Packet
+		move $s2, $ra # Return Value
+	# Increment size on the heap
+	 	addi $t4, $t4, 1
+	 	sh $t4, ($a0)
+	# Puts the value packet into the heap
+		add $a0, $s0, $t4
+		add $a0, $a0, $t4
+		add $a0, $a0, $t4
+		add $a0, $a0, $t4
+		sw $s1, ($a0)
+		move $a0, $s0
+	move $t6, $t4 # pointer to arr
+	li $t7, 2
+	enqueueLoop:
+		addi $t6, $t6, -1
+		div $t6, $t7
+		mflo $t6
+		add $a0, $a0, $t6
+		add $a0, $a0, $t6
+		add $a0, $a0, $t6
+		add $a0, $a0, $t6
+		jal compare_to
+		move $a0, $s0
+		move $a1, $s1
+		bltz $v0, enqueueRestoreValues
+		# Get the values to swap
+			add $a0, $s0, $t6
+			lw $t8, ($a0)
+			add $a0, $s0, $t4
+			lw $t9, ($a0)
+		# Swap the values
+			add $a0, $s0, $t6
+			sw $t9, ($a0)
+			add $a0, $s0, $t4
+			lw $t8, ($a0)
+		move $a0, $s0
+		move $t4, $t6
+		j enqueueLoop
+	enqueueRestoreValues:
+		lh $v0, ($s0)
+		move $ra, $s2
+		lw $s0, ($sp)
+		lw $s1, 4($sp)
+		lw $s2, 8($sp)
+		addi $sp, $sp, 12
+enqueueDone:
 jr $ra
 
 dequeue:

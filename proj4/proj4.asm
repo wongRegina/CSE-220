@@ -425,8 +425,7 @@ dequeue: # Must call  compare_to($t0, $t1, $t2, $t3)
 			addi $t6, $t6, 2
 			move $a0, $s0
 			j heapifyDown
-	dequeueRestoreValue:
-		# change the counter
+	dequeueRestoreValue: # change the counter		
 		lh $t0, ($s0)
 		addi $t0, $t0, -1
 		sh $t0, ($s0)
@@ -440,12 +439,8 @@ dequeue: # Must call  compare_to($t0, $t1, $t2, $t3)
 dequeueDone:
 jr $ra
 
-assemble_message: # must call compute_checksum($t0, $t1) (la $s0, packet )
-# la $a0, msg
-# la $a1, queue
-# pop out from the queue and put it into msg
-	#Memory on the stack
-		addi $sp, $sp, -16
+assemble_message: 
+		addi $sp, $sp, -16 #Memory on the stack
 		sw $s0, ($sp)
 		sw $s1, 4($sp)
 		sw $s2, 8($sp)

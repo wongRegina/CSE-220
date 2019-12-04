@@ -41,13 +41,6 @@ jal dequeue
 move $s0, $v0  # save pointer to returned packet
 
 # You will need to write your own code here to check the contents of the queue and the returned packet.
-la $a0, v0
-li $v0, 4
-syscall
-
-move $a0, $s0
-li $v0, 5
-syscall
 
 li $v0, 10
 syscall

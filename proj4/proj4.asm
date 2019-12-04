@@ -344,7 +344,6 @@ enqueueDone:
 jr $ra
 
 dequeue: # Must call  compare_to($t0, $t1, $t2, $t3)
-# la $a0, queue
 	li $v0, 0
 	lh $t4, ($a0) # Size
 	beqz $t4, dequeueDone
@@ -427,6 +426,10 @@ dequeue: # Must call  compare_to($t0, $t1, $t2, $t3)
 			move $a0, $s0
 			j heapifyDown
 	dequeueRestoreValue:
+		# change the counter
+		lh $t0, ($s0)
+		addi $t0, $t0, -1
+		sh $t0, ($s0)
 		move $ra, $s1
 		move $v0, $s3 # move the address
 		lw $s0, ($sp)
@@ -437,7 +440,59 @@ dequeue: # Must call  compare_to($t0, $t1, $t2, $t3)
 dequeueDone:
 jr $ra
 
-assemble_message:
+assemble_message: # must call compute_checksum($t0, $t1) (la $s0, packet )
+# la $a0, msg
+# la $a1, queue
+# pop out from the queue and put it into msg
+	#Memory on the stack
+		addi $sp, $sp, -16
+		sw $s0, ($sp)
+		sw $s1, 4($sp)
+		sw $s2, 8($sp)
+		sw $s3, 12($sp)
+		move $s0, $a0 # msg
+		move $s1, $ra # return address
+		lh $s2, ($a1) # $v0
+		li $s3, 0 # $v1
+	lh $t2, ($a1) # Size/ counter for the loop 
+	assembleMessageLoop:
+		beqz $t2, assembleMessageLoopDone
+		sll $t3, $t2, 2
+		add $t3, $t3, $a1
+		lw $t3, ($t3)  # address of the item from the queue
+		lh $t4, 10($t3) # Checksum from the packet
+		move $a0, $t3
+		jal compute_checksum
+			move $a0, $s0
+			beq $v0, $t4, checksumEqual
+			addi $s3, $s3, 1 # increment the number of packets that fail the checksum test
+		checksumEqual: 
+			lh $t0, ($t3) # total length
+			addi $t0, $t0, -12 # length of the word
+			lh $t1, 4($t3)
+			andi $t1, $t1, 0xFFF # fragment offset
+			add $t4, $t1, $a0 # where the word would go
+			addi $t5, $t3, 12 # Payloads starts
+			loopForWord:
+				beqz $t0, loopForWordDone
+				lb $t6, ($t5)
+				sb $t6, ($t4)
+				addi $t5, $t5, 1
+				addi $t4, $t4, 1
+				addi $t0, $t0, -1
+				j loopForWord
+			loopForWordDone:
+		addi $t2, $t2, -1
+		j assembleMessageLoop
+	assembleMessageLoopDone: # move things back
+		move $v0, $s2 # move the number of packet dequeue
+		move $v1, $s3 # move the packets that failed the check sum test
+		move $ra, $s1 # move the return address
+		lw $s0, ($sp)
+		lw $s1, 4($sp)
+		lw $s2, 8($sp)
+		lw $s3, 12($sp)
+		addi $sp, $sp, 16	
 jr $ra
 
 

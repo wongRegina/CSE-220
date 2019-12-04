@@ -282,59 +282,159 @@ enqueue: # Must call  compare_to($t0, $t1, $t2, $t3)
 		addi $sp, $sp, -12
 		sw $s0, ($sp)
 		sw $s1, 4($sp)
-		sw $s1, 8($sp)
+		sw $s2, 8($sp)
 	# Put things into the saved registers
 		move $s0, $a0 # Queue
 		move $s1, $a1 # Packet
 		move $s2, $ra # Return Value
-	# Increment size on the heap
-	 	addi $t4, $t4, 1
-	 	sh $t4, ($a0)
 	# Puts the value packet into the heap
-		add $a0, $s0, $t4
-		add $a0, $a0, $t4
-		add $a0, $a0, $t4
-		add $a0, $a0, $t4
-		sw $s1, ($a0)
+		sll $t5, $t4, 2
+		add $a0, $a0, $t5
+		sw $s1, 4($a0)
 		move $a0, $s0
 	move $t6, $t4 # pointer to arr
 	li $t7, 2
 	enqueueLoop:
+		blez $t4, enqueueRestoreValues
 		addi $t6, $t6, -1
 		div $t6, $t7
 		mflo $t6
-		add $a0, $a0, $t6
-		add $a0, $a0, $t6
-		add $a0, $a0, $t6
-		add $a0, $a0, $t6
+		
+		sll $t5, $t4, 2
+		add $a1, $s0, $t5
+		addi $a1, $a1, 4
+		lw $a1, ($a1)
+		sll $t5, $t6, 2
+		add $a0, $s0, $t5
+		addi $a0, $a0, 4
+		lw $a0, ($a0)
 		jal compare_to
 		move $a0, $s0
 		move $a1, $s1
 		bltz $v0, enqueueRestoreValues
 		# Get the values to swap
-			add $a0, $s0, $t6
-			lw $t8, ($a0)
-			add $a0, $s0, $t4
-			lw $t9, ($a0)
+			sll $t5, $t6, 2
+			add $a0, $s0, $t5
+			lw $t8, 4($a0)
+			sll $t5, $t4, 2
+			add $a0, $s0, $t5
+			lw $t9, 4($a0)
 		# Swap the values
-			add $a0, $s0, $t6
-			sw $t9, ($a0)
-			add $a0, $s0, $t4
-			lw $t8, ($a0)
+			sll $t5, $t6, 2
+			add $a0, $s0, $t5
+			sw $t9, 4($a0)
+			sll $t5, $t4, 2
+			add $a0, $s0, $t5
+			sw $t8, 4($a0)
 		move $a0, $s0
 		move $t4, $t6
 		j enqueueLoop
 	enqueueRestoreValues:
-		lh $v0, ($s0)
 		move $ra, $s2
 		lw $s0, ($sp)
 		lw $s1, 4($sp)
 		lw $s2, 8($sp)
 		addi $sp, $sp, 12
+# Increment size on the heap
+ 	lh $v0, ($a0)
+  	addi $v0, $v0, 1
+ 	sh $v0, ($a0)
+ 	lh $v0, ($a0)
 enqueueDone:
 jr $ra
 
-dequeue:
+dequeue: # Must call  compare_to($t0, $t1, $t2, $t3)
+# la $a0, queue
+	li $v0, 0
+	lh $t4, ($a0) # Size
+	beqz $t4, dequeueDone
+	#Memory on the stack
+		addi $sp, $sp, -16
+		sw $s0, ($sp)
+		sw $s1, 4($sp)
+		sw $s2, 8($sp)
+		sw $s3, 12($sp)
+		move $s0, $a0
+		move $s1, $ra
+	# Obtain the last element ($t6) and moving it to the root
+		sll $t5, $t4, 2
+		add $a0, $s0, $t5
+		lw $t6, ($a0)
+		sw $0, ($a0)
+		move $a0, $s0
+		lw $s3, 4($a0)
+		sw $t6, 4($a0)
+	li $t6, 0 # psn of the last element
+	heapifyDown: # fix the heap
+		lh $t9, 2($a0) # MAX_SIZE
+		sll $t7, $t6, 1 
+		addi $t7, $t7, 1 # $t7 is left child
+		addi $t8, $t7, 1 # $t8 is right child
+		bge $t7, $t9, dequeueRestoreValue
+		bge $t8, $t9, moveLeft
+		sll $t7, $t7,2
+		add $a0, $a0, $t7
+		lw $a0, 4($a0)
+		sll $t8, $t8, 2
+		add $a1, $s0, $t8
+		lw $a1, 4($a1)
+		jal compare_to
+		move $a0, $s0
+		bgtz $v0, moveRight # left is greater than right child
+		moveLeft:
+			sll $t9, $t6,2
+			add $a0, $s0, $t9
+			lw $a0, 4($a0)
+			add $a1, $s0, $t7
+			lw $a1, 4($a1)
+			jal compare_to
+			bltz $v0, dequeueRestoreValue
+			# Get The Values to Swap
+				add $t8, $s0, $t9
+				lw $a0, 4($t8)
+				add $t8, $t7, $s0
+				lw $a1, 4($t8)
+			# Swap the values
+				add $t8, $s0, $t9
+				sw $a1, 4($t8)
+				add $t8, $t8, $s0
+				sw $a0, 4($t8)
+			sll $t6, $t6, 1
+			addi $t6, $t6, 1
+			move $a0, $s0
+			j heapifyDown
+		moveRight:
+			sll $t9, $t6,2
+			add $a0, $s0, $t9
+			lw $a0, 4($a0)
+			add $a1, $s0, $t8
+			lw $a1, 4($a1)
+			jal compare_to
+			move $a0, $s0
+			bltz $v0, dequeueRestoreValue
+			# Get The Values to Swap
+				add $a0, $s0, $t9
+				lw $a0, 4($a0)
+				add $a1, $s0, $t8
+				lw $a1, 4($a1)
+			# Swap the values
+				add $t7, $s0, $t9
+				sw $a1, 4($t7)
+				add $t7, $t8, $s0
+				sw $a0, 4($t7)
+			sll $t6, $t6, 1
+			addi $t6, $t6, 2
+			move $a0, $s0
+			j heapifyDown
+	dequeueRestoreValue:
+		move $ra, $s1
+		move $v0, $s3 # move the address
+		lw $s0, ($sp)
+		lw $s1, 4($sp)
+		lw $s2, 8($sp)
+		lw $s3, 12($sp)
+		addi $sp, $sp, 16		
+dequeueDone:
 jr $ra
 
 assemble_message:

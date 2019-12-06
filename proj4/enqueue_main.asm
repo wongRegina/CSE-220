@@ -3,8 +3,9 @@
 queue:
 .half 7
 .half 10
-.word p07, p04, p03, p05, p01, p06, p00, 0, 0, 0, 
-packet: .word p02
+.word p05, p01, p06, p00, p03, p02, p07, 0, 0, 0
+#.word p00, p05, p02, p04, p01, p06, p07, 0, 0, 0
+packet: .word p04
 v0: .asciiz "v0: "
 
 all_packets:

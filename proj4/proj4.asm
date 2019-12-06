@@ -133,6 +133,7 @@ lw $t8, 16($sp) # dest_addr
 		addi $t3, $t3, 1 #moves the pointer to the next bit
 		j strLen
 	strLenDone:
+	addi $t2, $t2, 1
 	div $t2, $a2
 	mflo $t2 # Counter for the loop 
 	mflo $s7
@@ -218,24 +219,10 @@ addi $t3, $s6, 12
 	or $t9, $t9, $v0
 	sw $t9, 8($a0)
 	# copy the word over
-	li $t5, 4
-	div $s6, $t5
-	mflo $t6 # how many times it needs to go to word
+	move $t6, $s6
 	addi $a0, $a0, 12
 	loopToCopyToPayloadPart:
 		beqz $t6, doneCopyingToPayloadPart
-		lb $t7, ($a1)
-		sb $t7, ($a0)
-		addi $a0, $a0, 1
-		addi $a1, $a1, 1
-		lb $t7, ($a1)
-		sb $t7, ($a0)
-		addi $a0, $a0, 1
-		addi $a1, $a1, 1
-		lb $t7, ($a1)
-		sb $t7, ($a0)
-		addi $a0, $a0, 1
-		addi $a1, $a1, 1
 		lb $t7, ($a1)
 		sb $t7, ($a0)
 		addi $a0, $a0, 1
@@ -276,7 +263,6 @@ jr $ra
 enqueue: # Must call  compare_to($t0, $t1, $t2, $t3)
 	lh $t4, ($a0) # Size
 	lh $t5, 2($a0) # MAX_SIZE
-	move $t5, $v0
 	beq $t4, $t5, enqueueDone
 	#Memory on the stack
 		addi $sp, $sp, -12
